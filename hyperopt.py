@@ -1,11 +1,10 @@
 # %%
-import os
-import ast
-import csv
 from typing import List, Union
 import pandas as pd
 import numpy as np
-
+import ast
+import os
+import csv
 from rdkit import Chem
 
 import optuna
@@ -159,7 +158,7 @@ for i in range(2):
 
 # %%
 class MoleculeDataModule(pl.LightningDataModule):
-    def __init__(self, dataset, batch_size=128, val_split=0.1, test_split=0.2, num_workers=8):
+    def __init__(self, dataset, batch_size=128, val_split=0.1, test_split=0.2, num_workers=1):
         super().__init__()
         self.dataset = dataset
         self.batch_size = batch_size
@@ -316,14 +315,14 @@ patience = 10
 
 # %%
 def objective(trial):
-    hidden_features = trial.suggest_int('hidden_features', 32, 1024, log=True)
+    hidden_features = trial.suggest_int('hidden_features', 32, 128, log=True)
     num_heads = trial.suggest_int('num_heads', 1, 9)
     dropout_rate = trial.suggest_float('dropout_rate', 0.0, 0.6)
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-2, log=True)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-3, log=True)
     step_size = trial.suggest_int('step_size', 10, 100)
     gamma = trial.suggest_float('gamma', 0.1, 0.9)
-    batch_size = trial.suggest_int('batch_size', 32, 1024, step=32)
+    batch_size = trial.suggest_int('batch_size', 32, 128, step=32)
     activation_name = trial.suggest_categorical('activation_fn', ['relu', 'leaky_relu', 'elu'])
     activation_fn = getattr(F, activation_name)
 
