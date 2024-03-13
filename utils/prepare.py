@@ -13,13 +13,6 @@ from joblib import Parallel, delayed
 
 
 class FeaturizationParameters:
-    """Параметры для фичеризации молекул.
-    
-    Attributes:
-        max_atomic_num (int): Максимальный атомный номер для кодирования.
-        atom_features (dict): Словарь с определениями фичей атомов.
-        atom_fdim (int): Размерность вектора фичей атома.
-    """
     def __init__(self):
         self.max_atomic_num = 100
         self.atom_features = {
@@ -39,30 +32,13 @@ class FeaturizationParameters:
         self.atom_fdim = sum(len(choices) + 1 for choices in self.atom_features.values()) + 2
 
 def onek_encoding_unk(value, choices):
-    """Однократное кодирование с неизвестным значением.
-    
-    Args:
-        value: Значение для кодирования.
-        choices: Список возможных значений.
-    
-    Returns:
-        List[int]: Однократно закодированный вектор.
-    """
     encoding = [0] * (len(choices) + 1)
     index = choices.index(value) if value in choices else -1
     encoding[index] = 1
     return encoding
 
 def atom_features(atom, params):
-    """Генерирует фичи для одного атома.
-    
-    Args:
-        atom (Chem.rdchem.Atom): Атом для фичеризации.
-        params (FeaturizationParameters): Параметры фичеризации.
-    
-    Returns:
-        List[Union[bool, int, float]]: Фичи атома.
-    """
+
     features = onek_encoding_unk(atom.GetAtomicNum() - 1, params.atom_features['atomic_num']) + \
                onek_encoding_unk(atom.GetTotalDegree(), params.atom_features['degree']) + \
                onek_encoding_unk(atom.GetFormalCharge(), params.atom_features['formal_charge']) + \
@@ -78,14 +54,6 @@ PARAMS = {
 }
 
 def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
-    """Генерирует фичи для одной связи.
-    
-    Args:
-        bond (Chem.rdchem.Bond): Связь для фичеризации.
-    
-    Returns:
-        List[Union[bool, int, float]]: Фичи связи.
-    """
     if bond is None:
         fbond = [1] + [0] * (PARAMS['BOND_FDIM'] - 1)
     else:
@@ -104,21 +72,6 @@ def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
 
 
 class MoleculeData:
-    """Данные молекулы для графовой нейросети.
-    
-    Args:
-        smiles (str): SMILES представление молекулы.
-        target: Целевое значение для молекулы.
-        addHs (bool, optional): Добавлять водороды к молекуле. По умолчанию True.
-    
-    Attributes:
-        smiles (str): SMILES представление молекулы.
-        target (torch.Tensor): Целевое значение для молекулы.
-        mol (Chem.rdchem.Mol): Объект молекулы RDKit.
-        params (FeaturizationParameters): Параметры для фичеризации молекул.
-        edge_index (torch.Tensor): Индексы рёбер для графа молекулы.
-        edge_attr (torch.Tensor): Атрибуты рёбер для графа молекулы.
-    """
     def __init__(self, smiles, target, addHs=True):
         self.smiles = smiles
         self.target = torch.tensor(target, dtype=torch.float)
@@ -144,18 +97,7 @@ class MoleculeData:
         return torch.tensor(features, dtype=torch.float)
 
 class MoleculeDataset(Dataset):
-    """Датасет молекул для обучения графовых нейросетей.
-    
-    Args:
-        dataframe (pd.DataFrame): DataFrame с данными молекул.
-        smiles_column (str, optional): Имя колонки с SMILES представлениями. По умолчанию 'smiles'.
-        target_column (str, optional): Имя колонки с целевыми значениями. По умолчанию 'target'.
-        addHs (bool, optional): Добавлять водороды к молекулам. По умолчанию True.
-        n_jobs (int, optional): Количество параллельных задач. По умолчанию -1 (использовать все ядра).
-    
-    Attributes:
-        data_list (List[MoleculeData]): Список объектов данных молекул.
-    """
+
     def __init__(self, dataframe, smiles_column='smiles', target_column='target', addHs=True, n_jobs=-1):
         super(MoleculeDataset, self).__init__()
         
@@ -183,26 +125,12 @@ class MoleculeDataset(Dataset):
 
 
 def save_dataset(dataset, file_path):
-    """Сохраняет датасет в файл.
-
-    Args:
-        dataset (Dataset): Экземпляр датасета для сохранения.
-        file_path (str): Путь к файлу для сохранения датасета.
-    """
     torch.save(dataset, file_path)
     print(f"Датасет успешно сохранен в {file_path}")
 
 
 
 def load_dataset(file_path):
-    """Загружает датасет из файла.
-
-    Args:
-        file_path (str): Путь к файлу, из которого нужно загрузить датасет.
-
-    Returns:
-        Dataset: Загруженный датасет.
-    """
     dataset = torch.load(file_path)
 
     print(dataset)
