@@ -66,8 +66,8 @@ class MoleculeModel(pl.LightningModule):
         self.train_losses = []
         self.val_losses = []
 
-    def forward(self, x, edge_index):
-        return self.base_model(x, edge_index)
+    def forward(self, x, edge_index, edge_attr):
+        return self.base_model(x, edge_index, edge_attr)
 
     def configure_optimizers(self):
         optimizer = self.hparams.optimizer_class(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
@@ -80,7 +80,7 @@ class MoleculeModel(pl.LightningModule):
             schedule=torch.profiler.schedule(wait=1, warmup=1, active=2),
             on_trace_ready=tensorboard_trace_handler('profiler')
         ) as prof:
-            y_hat = self(batch.x, batch.edge_index)
+            y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
             loss = self.metric(batch.y, y_hat)
             self.log('train_loss', loss, batch_size=self.batch_size)
             self.train_losses.append(loss.item())
@@ -89,15 +89,14 @@ class MoleculeModel(pl.LightningModule):
 
         return loss
     
-
     def validation_step(self, batch, batch_idx):
-        y_hat = self(batch.x, batch.edge_index)
+        y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
         val_loss = self.metric(batch.y, y_hat)
         self.log('val_loss', val_loss, batch_size=self.batch_size)
         self.val_losses.append(val_loss.item())
 
     def test_step(self, batch, batch_idx):
-        y_hat = self(batch.x, batch.edge_index)
+        y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
         preds_np = y_hat.detach().cpu().numpy()
         true_values_np = batch.y.detach().cpu().numpy()
 
@@ -118,12 +117,6 @@ class MoleculeModel(pl.LightningModule):
 
         return data
 
-
-    def r2_score(self, y_true, y_pred):
-        ss_res = torch.sum((y_true - y_pred) ** 2)
-        ss_tot = torch.sum((y_true - torch.mean(y_true)) ** 2)
-        r2 = 1 - ss_res / ss_tot
-        return r2
 
     def test_epoch_end(self, outputs):
         all_data = [item for batch_data in outputs for item in batch_data]

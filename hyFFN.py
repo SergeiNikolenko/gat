@@ -15,7 +15,10 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 
-from torch_geometric.nn import GATv2Conv
+
+from torch_geometric.nn import GATv2Conv, GCNConv
+from torch_scatter import scatter_mean
+
 from lion_pytorch import Lion
 
 print("cuda", torch.cuda.is_available())  
@@ -33,20 +36,59 @@ from utils.prepare import load_dataset
 
 # %%
 class GATv2Model(nn.Module):
-    def __init__(self, in_features, hidden_features, out_features, num_heads, dropout_rate, activation_fn):
+    def __init__(self, atom_in_features, edge_in_features, hidden_features, out_features, num_heads, dropout_rate, activation_fn):
         super(GATv2Model, self).__init__()
-        self.conv1 = GATv2Conv(in_channels=in_features, out_channels=hidden_features, heads=num_heads, dropout=dropout_rate, concat=True)
-        self.bn1 = nn.BatchNorm1d(hidden_features * num_heads)
-        self.prelu = nn.PReLU()
-        self.conv2 = GATv2Conv(in_channels=hidden_features * num_heads, out_channels=out_features, heads=1, concat=False)
-        self.activation_fn = activation_fn
-        self.dropout_rate = dropout_rate
 
-    def forward(self, x, edge_index):
-        x = self.prelu(self.bn1(self.conv1(x, edge_index)))
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.conv2(x, edge_index).squeeze()
-        return x
+        self.atom_preprocess = nn.Linear(atom_in_features, hidden_features)
+        self.edge_preprocess = nn.Linear(edge_in_features, hidden_features)
+
+        # Слой для обработки атомных сообщений
+        self.atom_message_layer = nn.Sequential(
+            nn.Linear(hidden_features, hidden_features),
+            nn.BatchNorm1d(hidden_features),
+            activation_fn,
+            nn.Dropout(dropout_rate)
+        )
+
+        self.gat_conv = GATv2Conv(
+            in_channels=hidden_features * 2,
+            out_channels=hidden_features,
+            heads=num_heads,
+            dropout=dropout_rate,
+            concat=True
+        )
+
+        self.bn = nn.BatchNorm1d(hidden_features * num_heads)
+        self.activation = activation_fn
+        self.dropout = nn.Dropout(dropout_rate)
+
+        self.postprocess = nn.Sequential(
+            nn.Linear(hidden_features * num_heads, hidden_features),
+            nn.BatchNorm1d(hidden_features),
+            activation_fn,
+            nn.Dropout(dropout_rate),
+            nn.Linear(hidden_features, out_features)
+        )
+
+    def forward(self, x, edge_index, edge_attr):
+        atom_features = self.atom_preprocess(x)
+        edge_features = self.edge_preprocess(edge_attr)
+
+
+        row, col = edge_index
+        agg_edge_features = scatter_mean(edge_features, col, dim=0, dim_size=x.size(0))
+        atom_messages = self.atom_message_layer(atom_features + agg_edge_features)
+
+        # Использование атомных сообщений вместе с признаками атомов
+        combined_features = torch.cat([atom_messages, agg_edge_features], dim=1)
+
+        combined_features = self.gat_conv(combined_features, edge_index)
+        combined_features = self.bn(combined_features)
+        combined_features = self.activation(combined_features)
+        combined_features = self.dropout(combined_features)
+
+        out = self.postprocess(combined_features).squeeze(-1)
+        return out
 
 
 # %%
@@ -71,12 +113,14 @@ def save_trial_to_csv(trial, hyperopt_dir, trial_value):
         writer.writerow(row)
 
 
+
 # %%
-molecule_dataset = load_dataset("../data/QM_10k.pt")
+molecule_dataset = load_dataset("../data/QM_137k.pt")
 
 # %%
 num_workers = 8
 in_features = molecule_dataset[0].x.shape[1]
+edge_attr_dim = molecule_dataset[0].edge_attr.shape[1]
 max_epochs = 250
 patience = 25
 
@@ -90,21 +134,30 @@ def objective(trial):
     step_size = trial.suggest_int('step_size', 10, 100)
     gamma = trial.suggest_float('gamma', 0.1, 0.9)
     batch_size = trial.suggest_int('batch_size', 32, 512, step=16)
+    activation_fn_name = trial.suggest_categorical('activation_fn', ['relu', 'elu', 'leaky_relu', 'sigmoid'])
 
+    # Словарь, сопоставляющий строки с классами функций активации
+    activation_fns = {
+        'relu': nn.ReLU,
+        'elu': nn.ELU,
+        'leaky_relu': nn.LeakyReLU,
+        'sigmoid': nn.Sigmoid
+    }
+    # Выбор и инициализация функции активации
+    activation_fn = activation_fns[activation_fn_name]()
 
-    activation_name = trial.suggest_categorical('activation_fn', ['relu'])
-    activation_fn = getattr(F, activation_name)
 
     data_module = MoleculeDataModule(molecule_dataset, batch_size=batch_size, num_workers=num_workers)
 
     base_model = GATv2Model(
-        in_features=in_features,
+        atom_in_features=in_features,
         hidden_features=hidden_features,
         out_features=1,
         num_heads=num_heads,
         dropout_rate=dropout_rate,
-        activation_fn=activation_fn  
-    )
+        activation_fn=activation_fn,
+        edge_in_features=edge_attr_dim
+        )
 
     model = MoleculeModel(
         base_model=base_model,
@@ -146,7 +199,7 @@ print(f"Results will be saved in: {hyperopt_dir}")
 pruner = SuccessiveHalvingPruner()
 
 study = optuna.create_study(direction='minimize', pruner=pruner)
-study.optimize(objective, n_trials=1000)
+study.optimize(objective, n_trials=100)
 
 print(f'Best trial: {study.best_trial.number}')
 print(f'Best value (RMSE): {study.best_trial.value}')
