@@ -37,8 +37,16 @@ def onek_encoding_unk(value, choices):
     encoding[index] = 1
     return encoding
 
-def atom_features(atom, params):
 
+def get_skipatom_vector(atom_symbol, skipatom_model):
+    if atom_symbol in skipatom_model.dictionary:
+        return skipatom_model.vectors[skipatom_model.dictionary[atom_symbol]].tolist()
+    else:
+        return [0] * skipatom_model.vectors.shape[1]
+
+
+def atom_features(atom, params, skipatom_model=None):
+    # Существующие признаки атома
     features = onek_encoding_unk(atom.GetAtomicNum() - 1, params.atom_features['atomic_num']) + \
                onek_encoding_unk(atom.GetTotalDegree(), params.atom_features['degree']) + \
                onek_encoding_unk(atom.GetFormalCharge(), params.atom_features['formal_charge']) + \
@@ -46,14 +54,21 @@ def atom_features(atom, params):
                onek_encoding_unk(int(atom.GetTotalNumHs()), params.atom_features['num_Hs']) + \
                onek_encoding_unk(int(atom.GetHybridization()), params.atom_features['hybridization']) + \
                [1 if atom.GetIsAromatic() else 0] + \
-               [atom.GetMass() * 0.01]  # scaled to about the same range as other features
+               [atom.GetMass() * 0.01]  # Масштабирование массы
+
+    # Признаки SkipAtom
+    if skipatom_model is not None:
+        atom_symbol = atom.GetSymbol()
+        skipatom_features = get_skipatom_vector(atom_symbol, skipatom_model)
+        features += skipatom_features
+
     return features
 
 PARAMS = {
     'BOND_FDIM': 10
 }
 
-def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
+def bond_features(bond: Chem.rdchem.Bond, skipatom_model=None) -> List[Union[bool, int, float, np.ndarray]]:
     if bond is None:
         fbond = [1] + [0] * (PARAMS['BOND_FDIM'] - 1)
     else:
@@ -68,17 +83,31 @@ def bond_features(bond: Chem.rdchem.Bond) -> List[Union[bool, int, float]]:
             bond.IsInRing() if bt is not None else 0
         ]
         fbond += onek_encoding_unk(int(bond.GetStereo()), list(range(6)))
+
+    # Признаки SkipAtom
+    if skipatom_model is not None:
+        start_atom_symbol = bond.GetBeginAtom().GetSymbol()
+        end_atom_symbol = bond.GetEndAtom().GetSymbol()
+
+        start_atom_vector = get_skipatom_vector(start_atom_symbol, skipatom_model)
+        end_atom_vector = get_skipatom_vector(end_atom_symbol, skipatom_model)
+
+        fbond += start_atom_vector + end_atom_vector
+    
     return fbond
 
 
+
 class MoleculeData:
-    def __init__(self, smiles, target, addHs=True):
+    def __init__(self, smiles, target, addHs=True, skipatom_model=None):
         self.smiles = smiles
+        self.skipatom_model = skipatom_model
         self.target = torch.tensor(target, dtype=torch.float)
         self.mol = Chem.MolFromSmiles(smiles)
         if addHs:
             self.mol = Chem.AddHs(self.mol)
         self.params = FeaturizationParameters()
+        self.skipatom_model = skipatom_model
         self.edge_index, self.edge_attr = self.construct_graph()
 
     def construct_graph(self):
@@ -87,23 +116,23 @@ class MoleculeData:
         for bond in self.mol.GetBonds():
             start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index.extend([[start, end], [end, start]])
-            edge_attr.extend([bond_features(bond), bond_features(bond)])  # Добавляем признаки для обеих направлений связи
+            edge_attr.extend([bond_features(bond, self.skipatom_model), bond_features(bond, self.skipatom_model)])
         return torch.tensor(edge_index).t().contiguous(), torch.tensor(edge_attr, dtype=torch.float)
 
     def generate_atom_features(self):
         features = []
         for atom in self.mol.GetAtoms():
-            features.append(atom_features(atom, self.params))
+            features.append(atom_features(atom, self.params, self.skipatom_model))
         return torch.tensor(features, dtype=torch.float)
 
 class MoleculeDataset(Dataset):
-
-    def __init__(self, dataframe, smiles_column='smiles', target_column='target', addHs=True, n_jobs=-1):
+    def __init__(self, dataframe, smiles_column='smiles', target_column='target', addHs=True, n_jobs=-1, skipatom_model=None):
         super(MoleculeDataset, self).__init__()
         
         self.data_list = Parallel(n_jobs=n_jobs)(
-            delayed(lambda row: MoleculeData(row[smiles_column], row[target_column], addHs))(
-                row) for _, row in tqdm(dataframe.iterrows(), total=dataframe.shape[0]))
+        delayed(lambda row: MoleculeData(row[smiles_column], row[target_column], addHs, skipatom_model=skipatom_model if skipatom_model is not None else None))(
+            row) for _, row in tqdm(dataframe.iterrows(), total=dataframe.shape[0]))
+
 
     def len(self): 
         return len(self.data_list)
@@ -119,6 +148,34 @@ class MoleculeDataset(Dataset):
         data.smiles = molecule_data.smiles
         
         return data
+
+
+def save_dataset(dataset, file_path):
+    torch.save(dataset, file_path)
+    print(f"Датасет успешно сохранен в {file_path}")
+
+def load_dataset(file_path):
+    dataset = torch.load(file_path)
+
+    print(dataset)
+    print(dataset[0])
+    
+    print(f"Shape of atom features (x): {dataset[0].x.shape}")
+    print(f"Shape of edge index: {dataset[0].edge_index.shape}")
+    print(f"Shape of edge attr: {dataset[0].edge_attr.shape}")
+    print(f"Target value (y): {dataset[0].y}")
+    print(f"Shape of target value: {dataset[0].y.shape}")
+    print(f"Number of atoms in the molecule: {dataset[0].x.size(0)}")
+    print(f"Number of bonds in the molecule: {dataset[0].edge_index.size(1) // 2}") 
+
+    return dataset
+
+def convert_string_to_list(string):
+    try:
+        return ast.literal_eval(string)
+    except ValueError:
+        return []
+
 
 
 

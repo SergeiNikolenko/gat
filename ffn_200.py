@@ -43,7 +43,7 @@ from utils.prepare import MoleculeData, MoleculeDataset, FeaturizationParameters
 
 
 # %%
-molecule_dataset = load_dataset("../data/QM_137k.pt")
+molecule_dataset = load_dataset("../data/QM_137k_skip200.pt")
 
 # %%
 molecule_dataset[0]
