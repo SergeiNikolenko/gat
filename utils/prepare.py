@@ -97,11 +97,9 @@ def bond_features(bond: Chem.rdchem.Bond, skipatom_model=None) -> List[Union[boo
     return fbond
 
 
-
 class MoleculeData:
     def __init__(self, smiles, target, addHs=True, skipatom_model=None):
         self.smiles = smiles
-        self.skipatom_model = skipatom_model
         self.target = torch.tensor(target, dtype=torch.float)
         self.mol = Chem.MolFromSmiles(smiles)
         if addHs:
@@ -116,7 +114,10 @@ class MoleculeData:
         for bond in self.mol.GetBonds():
             start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             edge_index.extend([[start, end], [end, start]])
-            edge_attr.extend([bond_features(bond, self.skipatom_model), bond_features(bond, self.skipatom_model)])
+            edge_attr.extend([
+                bond_features(bond, self.skipatom_model),
+                bond_features(bond, self.skipatom_model)
+            ])
         return torch.tensor(edge_index).t().contiguous(), torch.tensor(edge_attr, dtype=torch.float)
 
     def generate_atom_features(self):
@@ -128,10 +129,11 @@ class MoleculeData:
 class MoleculeDataset(Dataset):
     def __init__(self, dataframe, smiles_column='smiles', target_column='target', addHs=True, n_jobs=-1, skipatom_model=None):
         super(MoleculeDataset, self).__init__()
-        
+        self.use_skipatom = skipatom_model is not None
         self.data_list = Parallel(n_jobs=n_jobs)(
-        delayed(lambda row: MoleculeData(row[smiles_column], row[target_column], addHs, skipatom_model=skipatom_model if skipatom_model is not None else None))(
-            row) for _, row in tqdm(dataframe.iterrows(), total=dataframe.shape[0]))
+            delayed(lambda row: MoleculeData(row[smiles_column], row[target_column], addHs, skipatom_model))(
+                row) for _, row in tqdm(dataframe.iterrows(), total=dataframe.shape[0]))
+
 
 
     def len(self): 
@@ -149,62 +151,9 @@ class MoleculeDataset(Dataset):
         
         return data
 
-
-def save_dataset(dataset, file_path):
-    torch.save(dataset, file_path)
-    print(f"Датасет успешно сохранен в {file_path}")
-
-def load_dataset(file_path):
-    dataset = torch.load(file_path)
-
-    print(dataset)
-    print(dataset[0])
-    
-    print(f"Shape of atom features (x): {dataset[0].x.shape}")
-    print(f"Shape of edge index: {dataset[0].edge_index.shape}")
-    print(f"Shape of edge attr: {dataset[0].edge_attr.shape}")
-    print(f"Target value (y): {dataset[0].y}")
-    print(f"Shape of target value: {dataset[0].y.shape}")
-    print(f"Number of atoms in the molecule: {dataset[0].x.size(0)}")
-    print(f"Number of bonds in the molecule: {dataset[0].edge_index.size(1) // 2}") 
-
-    return dataset
-
 def convert_string_to_list(string):
     try:
         return ast.literal_eval(string)
     except ValueError:
         return []
 
-
-
-
-
-
-def save_dataset(dataset, file_path):
-    torch.save(dataset, file_path)
-    print(f"Датасет успешно сохранен в {file_path}")
-
-
-
-def load_dataset(file_path):
-    dataset = torch.load(file_path)
-
-    print(dataset)
-    print(dataset[0])
-    
-    print(f"Shape of atom features (x): {dataset[0].x.shape}")
-    print(f"Shape of edge index: {dataset[0].edge_index.shape}")
-    print(f"Shape of edge attr: {dataset[0].edge_attr.shape}")
-    print(f"Target value (y): {dataset[0].y}")
-    print(f"Shape of target value: {dataset[0].y.shape}")
-    print(f"Number of atoms in the molecule: {dataset[0].x.size(0)}")
-    print(f"Number of bonds in the molecule: {dataset[0].edge_index.size(1) // 2}") 
-
-    return dataset
-
-def convert_string_to_list(string):
-    try:
-        return ast.literal_eval(string)
-    except ValueError:
-        return []
