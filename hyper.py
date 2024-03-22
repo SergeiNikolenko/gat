@@ -1,22 +1,12 @@
 # %%
-import pandas as pd
-import numpy as np
-
-from rdkit import Chem
-
 import optuna
 from optuna.pruners import SuccessiveHalvingPruner
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Timer
-
-
-
-from torch_geometric.nn import GATv2Conv, TransformerConv
-from torch_scatter import scatter_mean
+from pytorch_lightning.callbacks import EarlyStopping
 
 from lion_pytorch import Lion
 
@@ -28,9 +18,6 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pytorch_lightnin
 warnings.filterwarnings("ignore", category=UserWarning, module="lightning_fabric.plugins.environments.slurm")
 
 torch.cuda.empty_cache()
-
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 from utils.train import MoleculeModel, MoleculeDataModule, GATv2Model, get_metric, save_trial_to_csv, create_hyperopt_dir
 from utils.prepare import FeaturizationParameters, MoleculeDataset, MoleculeData
@@ -44,7 +31,7 @@ num_workers = 8
 in_features = molecule_dataset[0].x.shape[1]
 edge_attr_dim = molecule_dataset[0].edge_attr.shape[1]
 max_epochs = 100
-patience = 5
+patience = 10
 
 # %% [markdown]
 # ### Гиперпараметры
@@ -54,12 +41,12 @@ import optuna
 
 def objective(trial):
     # Гиперпараметры для предобработки
-    num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 1, 3)
-    preprocess_hidden_features = [trial.suggest_categorical(f'preprocess_layer_{i}_size', [32, 64, 128, 256, 512, 1024]) for i in range(num_preprocess_layers)]
+    num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 2, 9)
+    preprocess_hidden_features = [trial.suggest_categorical(f'preprocess_layer_{i}_size', [64, 128, 256]) for i in range(num_preprocess_layers)]
     
     # Гиперпараметры для постобработки
-    num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 6)
-    postprocess_hidden_features = [trial.suggest_categorical(f'postprocess_layer_{i}_size', [32, 64, 128, 256, 512, 1024]) for i in range(num_postprocess_layers)]
+    num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 9)
+    postprocess_hidden_features = [trial.suggest_categorical(f'postprocess_layer_{i}_size', [64, 128, 256]) for i in range(num_postprocess_layers)]
     
     # Другие гиперпараметры
     num_heads = [trial.suggest_int(f'num_heads_{i}', 8, 20, step=2) for i in range(2)]
@@ -69,12 +56,12 @@ def objective(trial):
     weight_decay = 2e-4
     step_size = 50
     gamma = 0.1
-    batch_size = 128
+    batch_size = 64
 
-    #learning_rate = trial.suggest_float('learning_rate', 1e-6, 1e-3, log=True)
-    #weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True)
-    #step_size = trial.suggest_int('step_size', 10, 200)
-    #gamma = trial.suggest_float('gamma', 0.1, 0.9)
+    learning_rate = trial.suggest_float('learning_rate', 1e-6, 1e-3, log=True)
+    weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True)
+    step_size = trial.suggest_int('step_size', 10, 200, step=10)
+    gamma = trial.suggest_float('gamma', 0.1, 0.9)
     #batch_size = trial.suggest_int('batch_size', 64, 128, step=64)
 
     # Создание модели с переменными гиперпараметрами
@@ -85,7 +72,7 @@ def objective(trial):
         preprocess_hidden_features=preprocess_hidden_features,
         num_heads=num_heads,
         dropout_rates=dropout_rates,
-        activation_fns=[nn.ReLU for _ in range(len(dropout_rates))],  # Для простоты используем ReLU для всех слоев
+        activation_fns=[nn.ReLU for _ in range(len(dropout_rates))],  # ReLU для всех слоев
         use_batch_norm=use_batch_norm,
         num_postprocess_layers=num_postprocess_layers,
         postprocess_hidden_features=postprocess_hidden_features,
@@ -105,6 +92,7 @@ def objective(trial):
 
     # Обучение модели
     data_module = MoleculeDataModule(molecule_dataset, batch_size=128, num_workers=num_workers)
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=patience, mode="min")
 
     trainer = pl.Trainer(
         max_epochs=max_epochs,
@@ -112,30 +100,28 @@ def objective(trial):
         accelerator='gpu',
         logger=False,
         enable_progress_bar=False,
-        enable_model_summary=False,
         enable_checkpointing=False,
-        auto_scale_batch_size=True,
-        callbacks=[EarlyStopping(monitor='val_loss', patience=patience, verbose=False, mode='min')]
+        enable_model_summary=False,
+        callbacks=[early_stop_callback]
     )
     trainer.fit(model, data_module)
 
-    # Получение потерь на валидационном наборе
     val_loss = trainer.callback_metrics["val_loss"].item()
-    trial_value = torch.sqrt(torch.tensor(val_loss)).item()
 
-    # Сохранение результатов испытания
-    save_trial_to_csv(trial, hyperopt_dir, trial_value)
+    save_trial_to_csv(trial, hyperopt_dir, val_loss)
 
-    return trial_value
+    return val_loss
 
-# Начало оптимизации
+torch.set_float32_matmul_precision('medium')
+
 hyperopt_dir = create_hyperopt_dir()
 print(f"Results will be saved in: {hyperopt_dir}")
 
+pruner = SuccessiveHalvingPruner()
 study = optuna.create_study(direction='minimize')
-study.optimize(objective, n_trials=100)
 
-# Вывод лучших результатов
+study.optimize(objective, n_trials=10000)
+
 print(f'Best trial: {study.best_trial.number}')
 print(f'Best value (RMSE): {study.best_trial.value}')
 for key, value in study.best_trial.params.items():

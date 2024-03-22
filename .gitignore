@@ -2,3 +2,4 @@
 checkpoints/
 *log*
 *.out
+logs/

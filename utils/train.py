@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn import GATv2Conv, MessagePassing
 from torch_scatter import scatter_mean
 from torch.utils.data import Subset
 import torch.nn.functional as F
@@ -15,6 +15,25 @@ from torch_geometric.loader import DataLoader
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+
+def evaluate_model(model, data_module):
+    test_dl = data_module.test_dataloader()
+    model.eval()  
+    all_pred, all_true = [], []
+
+    with torch.no_grad():
+        for batch in test_dl:
+            y_hat = model(batch.x, batch.edge_index, batch.edge_attr)
+            all_pred.extend(y_hat.cpu().numpy())
+            all_true.extend(batch.y.cpu().numpy())
+
+    all_pred, all_true = np.array(all_pred), np.array(all_true)
+    rmse = np.sqrt(mean_squared_error(all_true, all_pred))
+    r2 = r2_score(all_true, all_pred)
+
+    print(f'Test RMSE: {rmse:.4f}')
+    print(f'Test R²: {r2:.4f}')
 
 def create_hyperopt_dir(base_dir='hyperopt_'):
     idx = 1
@@ -101,12 +120,10 @@ class MoleculeModel(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
-
         y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
         loss = self.metric(batch.y, y_hat)
         self.log('train_loss', loss, batch_size=self.batch_size)
         self.train_losses.append(loss.item())
-
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -134,11 +151,10 @@ class MoleculeModel(pl.LightningModule):
             })
 
             start_idx = end_idx
-
         return data
 
+    def on_test_epoch_end(self, outputs):
 
-    def test_epoch_end(self, outputs):
         all_data = [item for batch_data in outputs for item in batch_data]
         self.df_results = pd.DataFrame(all_data)
 
@@ -150,10 +166,15 @@ class MoleculeModel(pl.LightningModule):
         r2 = r2_score(all_true_values, all_predictions)
         mae = mean_absolute_error(all_true_values, all_predictions)
 
-        print(f'RMSE: {rmse:.4f}')
-        print(f'MSE: {mse:.4f}')
-        print(f'R²: {r2:.4f}')
-        print(f'MAE: {mae:.4f}')
+        self.log('test_rmse', rmse)
+        self.log('test_mse', mse)
+        self.log('test_r2', r2)
+        self.log('test_mae', mae)
+
+        print(f'Test RMSE: {rmse:.4f}')
+        print(f'Test MSE: {mse:.4f}')
+        print(f'Test R²: {r2:.4f}')
+        print(f'Test MAE: {mae:.4f}')
 
         return self.df_results
 
