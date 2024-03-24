@@ -41,27 +41,27 @@ import optuna
 
 def objective(trial):
     # Гиперпараметры для предобработки
-    num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 2, 9)
-    preprocess_hidden_features = [trial.suggest_categorical(f'preprocess_layer_{i}_size', [64, 128, 256]) for i in range(num_preprocess_layers)]
+    num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 9, 9)
+    preprocess_hidden_features = [trial.suggest_categorical(f'preprocess_layer_{i}_size', [64, 128, 256, 512]) for i in range(num_preprocess_layers)]
     
     # Гиперпараметры для постобработки
-    num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 9)
-    postprocess_hidden_features = [trial.suggest_categorical(f'postprocess_layer_{i}_size', [64, 128, 256]) for i in range(num_postprocess_layers)]
+    num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 2)
+    postprocess_hidden_features = [trial.suggest_categorical(f'postprocess_layer_{i}_size', [64, 128, 256, 512]) for i in range(num_postprocess_layers)]
     
     # Другие гиперпараметры
-    num_heads = [trial.suggest_int(f'num_heads_{i}', 8, 20, step=2) for i in range(2)]
-    dropout_rates = [trial.suggest_float(f'dropout_rate_{i}', 0.0, 0.2, step=0.1) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
-    use_batch_norm = [trial.suggest_categorical(f'use_batch_norm_{i}', [True, False]) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
-    learning_rate = 8.5e-4
-    weight_decay = 2e-4
-    step_size = 50
-    gamma = 0.1
+    num_heads = [trial.suggest_int(f'num_heads_{i}', 16, 32, step=2) for i in range(2)]
+    dropout_rates = [trial.suggest_float(f'dropout_rate_{i}', 0.0, 0.1) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
+    use_batch_norm = [trial.suggest_categorical(f'use_batch_norm_{i}', [True]) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
+    learning_rate = 2.2e-5
+    weight_decay = 3e-5
+    step_size = 80
+    gamma = 0.2
     batch_size = 64
 
-    learning_rate = trial.suggest_float('learning_rate', 1e-6, 1e-3, log=True)
-    weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True)
-    step_size = trial.suggest_int('step_size', 10, 200, step=10)
-    gamma = trial.suggest_float('gamma', 0.1, 0.9)
+    #learning_rate = trial.suggest_float('learning_rate', 1e-6, 1e-3, log=True)
+    #weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True)
+    #step_size = trial.suggest_int('step_size', 10, 200, step=10)
+    #gamma = trial.suggest_float('gamma', 0.1, 0.9)
     #batch_size = trial.suggest_int('batch_size', 64, 128, step=64)
 
     # Создание модели с переменными гиперпараметрами
