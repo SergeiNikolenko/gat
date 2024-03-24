@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GATv2Conv, MessagePassing
+from torch_geometric.nn import GATv2Conv
 from torch_scatter import scatter_mean
 from torch.utils.data import Subset
 import torch.nn.functional as F
@@ -183,74 +183,75 @@ class GATv2Model(nn.Module):
     def __init__(self, atom_in_features, edge_in_features, num_preprocess_layers, preprocess_hidden_features, num_heads, dropout_rates, activation_fns, use_batch_norm, num_postprocess_layers, postprocess_hidden_features, out_features):
         super(GATv2Model, self).__init__()
 
-        # Создаем слои предобработки для атомных свойств
-        self.atom_preprocess_layers = nn.ModuleList()
+        # Preprocessing layers for atom features
+        self.atom_preprocess = nn.ModuleList()
         for i in range(num_preprocess_layers):
-            layers = []
+            preprocess_layer = nn.Sequential()
             in_features = atom_in_features if i == 0 else preprocess_hidden_features[i-1]
-            layers.append(nn.Linear(in_features, preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'atom_linear_{i}', nn.Linear(in_features, preprocess_hidden_features[i]))
             if use_batch_norm[i]:
-                layers.append(nn.BatchNorm1d(preprocess_hidden_features[i]))
-            layers.append(activation_fns[i]())
-            layers.append(nn.Dropout(dropout_rates[i]))
-            self.atom_preprocess_layers.append(nn.Sequential(*layers))
+                preprocess_layer.add_module(f'atom_bn_{i}', nn.BatchNorm1d(preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'atom_activation_{i}', activation_fns[i]())
+            preprocess_layer.add_module(f'atom_dropout_{i}', nn.Dropout(dropout_rates[i]))
+            self.atom_preprocess.append(preprocess_layer)
 
-        # Создаем слои предобработки для свойств связей
-        self.edge_preprocess_layers = nn.ModuleList()
+        # Preprocessing layers for edge features
+        self.edge_preprocess = nn.ModuleList()
         for i in range(num_preprocess_layers):
-            layers = []
+            preprocess_layer = nn.Sequential()
             in_features = edge_in_features if i == 0 else preprocess_hidden_features[i-1]
-            layers.append(nn.Linear(in_features, preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'edge_linear_{i}', nn.Linear(in_features, preprocess_hidden_features[i]))
             if use_batch_norm[i]:
-                layers.append(nn.BatchNorm1d(preprocess_hidden_features[i]))
-            layers.append(activation_fns[i]())
-            layers.append(nn.Dropout(dropout_rates[i]))
-            self.edge_preprocess_layers.append(nn.Sequential(*layers))
+                preprocess_layer.add_module(f'edge_bn_{i}', nn.BatchNorm1d(preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'edge_activation_{i}', activation_fns[i]())
+            preprocess_layer.add_module(f'edge_dropout_{i}', nn.Dropout(dropout_rates[i]))
+            self.edge_preprocess.append(preprocess_layer)
 
-        # Создаем слои GATv2
-        self.gat_conv_layers = nn.ModuleList([
-            GATv2Conv(
+        # GATv2 convolutional layers
+        self.gat_convolutions = nn.ModuleList()
+        for i, num_head in enumerate(num_heads):
+            gat_layer = GATv2Conv(
                 in_channels=preprocess_hidden_features[-1] * (2 if i == 0 else num_heads[i - 1]),
                 out_channels=preprocess_hidden_features[-1],
-                heads=num_heads[i],
+                heads=num_head,
                 dropout=dropout_rates[num_preprocess_layers + i],
                 concat=True
-            ) for i in range(len(num_heads))
-        ])
+            )
+            self.gat_convolutions.add_module(f'gat_conv_{i}', gat_layer)
 
-        # Создаем слои постобработки
-        self.postprocess_layers = nn.ModuleList()
+        # Postprocessing layers
+        self.postprocess = nn.ModuleList()
         for i in range(num_postprocess_layers):
-            layers = []
+            post_layer = nn.Sequential()
             in_features = preprocess_hidden_features[-1] * num_heads[-1] if i == 0 else postprocess_hidden_features[i-1]
-            layers.append(nn.Linear(in_features, postprocess_hidden_features[i]))
+            post_layer.add_module(f'post_linear_{i}', nn.Linear(in_features, postprocess_hidden_features[i]))
             if use_batch_norm[num_preprocess_layers + len(num_heads) + i]:
-                layers.append(nn.BatchNorm1d(postprocess_hidden_features[i]))
-            layers.append(activation_fns[num_preprocess_layers + len(num_heads) + i]())
-            layers.append(nn.Dropout(dropout_rates[num_preprocess_layers + len(num_heads) + i]))
-            self.postprocess_layers.append(nn.Sequential(*layers))
+                post_layer.add_module(f'post_bn_{i}', nn.BatchNorm1d(postprocess_hidden_features[i]))
+            post_layer.add_module(f'post_activation_{i}', activation_fns[num_preprocess_layers + len(num_heads) + i]())
+            post_layer.add_module(f'post_dropout_{i}', nn.Dropout(dropout_rates[num_preprocess_layers + len(num_heads) + i]))
+            self.postprocess.append(post_layer)
 
-        self.final_layer = nn.Linear(postprocess_hidden_features[-1], out_features)
+        self.output_layer = nn.Linear(postprocess_hidden_features[-1], out_features)
 
     def forward(self, x, edge_index, edge_attr):
-        for layer in self.atom_preprocess_layers:
+        for layer in self.atom_preprocess:
             x = layer(x)
 
-        for layer in self.edge_preprocess_layers:
+        for layer in self.edge_preprocess:
             edge_attr = layer(edge_attr)
 
-        # Объединяем атомные свойства и свойства связей
+        # Combine atom and edge features
         row, col = edge_index
-        agg_edge_features = scatter_mean(edge_attr, col, dim=0, dim_size=x.size(0))
-        x = torch.cat([x, agg_edge_features], dim=1)
+        aggregated_edge_features = scatter_mean(edge_attr, col, dim=0, dim_size=x.size(0))
+        x = torch.cat([x, aggregated_edge_features], dim=1)
 
-        # Применяем слои GATv2
-        for conv in self.gat_conv_layers:
+        # Apply GATv2 convolutions
+        for conv in self.gat_convolutions.children():
             x = conv(x, edge_index)
 
-        # Применяем слои постобработки
-        for layer in self.postprocess_layers:
+        # Apply postprocessing
+        for layer in self.postprocess:
             x = layer(x)
 
-        x = self.final_layer(x).squeeze(-1)
+        x = self.output_layer(x).squeeze(-1)
         return x
