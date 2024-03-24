@@ -28,7 +28,7 @@ logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
 
 
 # %%
-molecule_dataset = torch.load("../data/QM_137k.pt")
+molecule_dataset = torch.load("../data/QM_137k_skip200.pt")
 
 # %%
 num_workers = 8
