@@ -1,0 +1,5 @@
+*slurm*
+checkpoints/
+*log*
+__pycache__/
+hyperopt_*/
