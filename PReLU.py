@@ -28,7 +28,7 @@ logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
 
 
 # %%
-molecule_dataset = torch.load("../data/QM_137k_skip200.pt")
+molecule_dataset = torch.load("../data/QM_137k.pt")
 
 # %%
 num_workers = 8
@@ -50,15 +50,15 @@ def objective(trial):
         num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 9, 9)
         num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 2)
         
-        preprocess_size = trial.suggest_categorical('preprocess_size', [64, 128, 256])
-        postprocess_size = trial.suggest_categorical('postprocess_size', [64])
+        preprocess_size = trial.suggest_categorical('preprocess_size', [256])
+        postprocess_size = trial.suggest_categorical('postprocess_size', [256])
         
         preprocess_hidden_features = [preprocess_size] * num_preprocess_layers
         postprocess_hidden_features = [postprocess_size] * num_postprocess_layers
 
-        num_heads = [trial.suggest_int(f'num_heads_{i}', 16, 32, step=2) for i in range(2)]
+        num_heads = [trial.suggest_int(f'num_heads_{i}', 32, 32, step=2) for i in range(2)]
 
-        dropout_rates = [trial.suggest_float(f'dropout_rate_{i}', 0.0, 0.1) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
+        dropout_rates = [trial.suggest_float(f'dropout_rate_{i}', 0.01, 0.01) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
         use_batch_norm = [trial.suggest_categorical(f'use_batch_norm_{i}', [True]) for i in range(num_preprocess_layers + 2 + num_postprocess_layers)]
         learning_rate = 2.2e-5
         weight_decay = 3e-5
@@ -72,6 +72,10 @@ def objective(trial):
         #gamma = trial.suggest_float('gamma', 0.1, 0.9)
         #batch_size = trial.suggest_int('batch_size', 64, 128, step=64)
 
+        alpha = trial.suggest_float('alpha', 0.01, 0.4)
+
+        activation_fn = nn.PReLU(num_parameters=1, init=alpha)
+
         # Создание модели с переменными гиперпараметрами
         base_model = GATv2Model(
             atom_in_features=in_features,
@@ -80,7 +84,7 @@ def objective(trial):
             preprocess_hidden_features=preprocess_hidden_features,
             num_heads=num_heads,
             dropout_rates=dropout_rates,
-            activation_fns=[nn.ReLU for _ in range(len(dropout_rates))],  # ReLU для всех слоев
+            activation_fns=[activation_fn for _ in range(len(dropout_rates))],
             use_batch_norm=use_batch_norm,
             num_postprocess_layers=num_postprocess_layers,
             postprocess_hidden_features=postprocess_hidden_features,
@@ -134,11 +138,12 @@ print(f"Results will be saved in: {hyperopt_dir}")
 
 study = optuna.create_study(direction='minimize', pruner=optuna.pruners.SuccessiveHalvingPruner())
 
-study.optimize(objective, n_trials=10000,)
+study.optimize(objective, n_trials=100)
 
 print(f'Best trial: {study.best_trial.number}')
 print(f'Best value (RMSE): {study.best_trial.value}')
 for key, value in study.best_trial.params.items():
     print(f'{key}: {value}')
+
 
 
