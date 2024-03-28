@@ -1,3 +1,36 @@
+# %%
+import numpy as np
+import pandas as pd
+import tensorboard
+from rdkit import Chem
+
+import torch
+import torch.nn as nn
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, Timer
+
+from lion_pytorch import Lion
+
+if torch.cuda.is_available():
+    print("cuda", torch.cuda.is_available())
+    print(torch.cuda.get_device_name(0))
+    torch.cuda.empty_cache()
+else:
+    print("CUDA is not available.")
+
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pytorch_lightning.trainer.connectors.data_connector")
+warnings.filterwarnings("ignore", category=UserWarning, module="lightning_fabric.plugins.environments.slurm")
+
+
+torch.cuda.empty_cache()
+
+from utils.train import MoleculeModel, MoleculeDataModule, evaluate_model
+from utils.prepare import MoleculeData, MoleculeDataset, FeaturizationParameters
+
+
+# %%
 import os
 import csv
 
@@ -239,14 +272,12 @@ class MoleculeModel(pl.LightningModule):
         return self.df_results
     
     def on_epoch_end(self):
-        if self.logger:
-            for name, param in self.named_parameters():
-                self.logger.experiment.add_histogram(name, param, self.current_epoch)
-
+        for name, param in self.named_parameters():
+            self.logger.experiment.add_histogram(name, param, self.current_epoch)
+            
     def log_activations_hook(self, layer_name):
         def hook(module, input, output):
-            if self.logger:
-                self.logger.experiment.add_histogram(f"{layer_name}_activations", output, self.current_epoch)
+            self.logger.experiment.add_histogram(f"{layer_name}_activations", output, self.current_epoch)
         return hook
 
     def get_metric(self, metric_name):
@@ -262,3 +293,187 @@ class MoleculeModel(pl.LightningModule):
 
         else:
             raise ValueError(f"Неизвестное имя метрики: {metric_name}")
+
+class GATv2Model(nn.Module):
+    def __init__(self, atom_in_features, edge_in_features, num_preprocess_layers, preprocess_hidden_features, num_heads, dropout_rates, activation_fns, use_batch_norm, num_postprocess_layers, postprocess_hidden_features, out_features):
+        super(GATv2Model, self).__init__()
+
+        # Preprocessing layers for atom features
+        self.atom_preprocess = nn.ModuleList()
+        for i in range(num_preprocess_layers):
+            preprocess_layer = nn.Sequential()
+            in_features = atom_in_features if i == 0 else preprocess_hidden_features[i-1]
+            preprocess_layer.add_module(f'atom_linear_{i}', nn.Linear(in_features, preprocess_hidden_features[i]))
+            if use_batch_norm[i]:
+                preprocess_layer.add_module(f'atom_bn_{i}', nn.BatchNorm1d(preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'atom_activation_{i}', activation_fns[i]())
+            preprocess_layer.add_module(f'atom_dropout_{i}', nn.Dropout(dropout_rates[i]))
+            self.atom_preprocess.append(preprocess_layer)
+
+        # Preprocessing layers for edge features
+        self.edge_preprocess = nn.ModuleList()
+        for i in range(num_preprocess_layers):
+            preprocess_layer = nn.Sequential()
+            in_features = edge_in_features if i == 0 else preprocess_hidden_features[i-1]
+            preprocess_layer.add_module(f'edge_linear_{i}', nn.Linear(in_features, preprocess_hidden_features[i]))
+            if use_batch_norm[i]:
+                preprocess_layer.add_module(f'edge_bn_{i}', nn.BatchNorm1d(preprocess_hidden_features[i]))
+            preprocess_layer.add_module(f'edge_activation_{i}', activation_fns[i]())
+            preprocess_layer.add_module(f'edge_dropout_{i}', nn.Dropout(dropout_rates[i]))
+            self.edge_preprocess.append(preprocess_layer)
+
+        # GATv2 convolutional layers
+        self.gat_convolutions = nn.ModuleList()
+        for i, num_head in enumerate(num_heads):
+            gat_layer = GATv2Conv(
+                in_channels=preprocess_hidden_features[-1] * (2 if i == 0 else num_heads[i - 1]),
+                out_channels=preprocess_hidden_features[-1],
+                heads=num_head,
+                dropout=dropout_rates[num_preprocess_layers + i],
+                concat=True
+            )
+            self.gat_convolutions.add_module(f'gat_conv_{i}', gat_layer)
+
+        # Postprocessing layers
+        self.postprocess = nn.ModuleList()
+        for i in range(num_postprocess_layers):
+            post_layer = nn.Sequential()
+            in_features = preprocess_hidden_features[-1] * num_heads[-1] if i == 0 else postprocess_hidden_features[i-1]
+            post_layer.add_module(f'post_linear_{i}', nn.Linear(in_features, postprocess_hidden_features[i]))
+            if use_batch_norm[num_preprocess_layers + len(num_heads) + i]:
+                post_layer.add_module(f'post_bn_{i}', nn.BatchNorm1d(postprocess_hidden_features[i]))
+            post_layer.add_module(f'post_activation_{i}', activation_fns[num_preprocess_layers + len(num_heads) + i]())
+            post_layer.add_module(f'post_dropout_{i}', nn.Dropout(dropout_rates[num_preprocess_layers + len(num_heads) + i]))
+            self.postprocess.append(post_layer)
+
+        self.output_layer = nn.Linear(postprocess_hidden_features[-1], out_features)
+
+    def forward(self, x, edge_index, edge_attr):
+        for layer in self.atom_preprocess:
+            x = layer(x)
+
+        for layer in self.edge_preprocess:
+            edge_attr = layer(edge_attr)
+
+        # Combine atom and edge features
+        row, col = edge_index
+        aggregated_edge_features = scatter_mean(edge_attr, col, dim=0, dim_size=x.size(0))
+        x = torch.cat([x, aggregated_edge_features], dim=1)
+
+        # Apply GATv2 convolutions
+        for conv in self.gat_convolutions.children():
+            x = conv(x, edge_index)
+
+        # Apply postprocessing
+        for layer in self.postprocess:
+            x = layer(x)
+
+        x = self.output_layer(x).squeeze(-1)
+        return x
+
+# %%
+molecule_dataset = torch.load("../data/QM_137k.pt")
+
+# %%
+molecule_dataset[0]
+
+# %%
+batch_size = 128   
+num_workers = 8  
+
+data_module = MoleculeDataModule(molecule_dataset, batch_size=batch_size, num_workers=num_workers)
+
+# %%
+in_features = molecule_dataset[0].x.shape[1]
+edge_attr_dim = molecule_dataset[0].edge_attr.shape[1]
+out_features = 1
+
+hidden_features = [128, 128, 128, 128, 128, 128, 128, 128, 128]  # Размеры предобработки для каждого слоя
+postprocess_hidden_features = [128, 128]  # Размеры слоёв постобработки
+num_heads = [16, 20]  # Количество голов внимания для каждого слоя GATv2
+
+dropout_rates = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  
+activation_fns = [nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU, nn.PReLU]
+use_batch_norm = [True, True, True, True, True, True, True, True, True, True, True, True, True]
+
+
+optimizer_class = Lion
+
+learning_rate = 2.2e-5
+weight_decay = 3e-5
+
+step_size = 80
+gamma = 0.2
+
+max_epochs = 100
+patience = 5
+
+torch.set_float32_matmul_precision('high')
+
+model = MoleculeModel(
+    atom_in_features=in_features,
+    edge_in_features=edge_attr_dim,
+    preprocess_hidden_features=hidden_features,
+    num_heads=num_heads,
+    dropout_rates=dropout_rates,
+    activation_fns=activation_fns,
+    use_batch_norm=use_batch_norm,
+    postprocess_hidden_features=postprocess_hidden_features,
+    out_features=out_features,
+    optimizer_class=optimizer_class,
+    learning_rate=learning_rate,
+    weight_decay=weight_decay,
+    step_size=step_size,
+    gamma=gamma,
+    batch_size=batch_size,
+    metric='rmse'
+)
+
+print("Model:\n", model)
+
+checkpoint_callback = ModelCheckpoint(monitor='val_loss', mode='min', save_top_k=1, verbose=True)
+early_stop_callback = EarlyStopping(monitor='val_loss', patience=patience, verbose=True, mode='min')
+timer = Timer()
+logger = pl.loggers.TensorBoardLogger('tb_logs', name='MolModel')
+
+trainer = pl.Trainer(
+    max_epochs=max_epochs,
+    enable_checkpointing=False,
+    callbacks=[early_stop_callback, timer],
+    enable_progress_bar=False,
+    logger=logger,
+    accelerator='gpu',
+    devices=1,
+)
+
+# %%
+trainer.fit(model, data_module)
+
+# %%
+seconds = timer.time_elapsed()
+h, m, s = int(seconds // 3600), int((seconds % 3600) // 60), int(seconds % 60)
+
+print(f"Время обучения: {h}:{m:02d}:{s:02d}")
+
+
+# %%
+evaluate_model(model, data_module)
+
+# %%
+def draw_molecule(smiles, predictions):
+    mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
+    predictions_rounded = np.round(predictions, 2)
+
+    for atom, pred in zip(mol.GetAtoms(), predictions_rounded):
+        atom.SetProp('atomNote', str(pred))
+
+    img = Chem.Draw.MolToImage(mol, size=(600, 600), kekulize=True)
+    img.show()
+
+#smiles = df_results.iloc[0]['smiles']
+#predictions = df_results.iloc[0]['predictions']
+
+#draw_molecule(smiles, predictions)
+
+
+
