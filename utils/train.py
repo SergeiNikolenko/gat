@@ -132,6 +132,17 @@ class MoleculeModel(pl.LightningModule):
             )
             self.gat_convolutions.add_module(f'gat_conv_{i}', gat_layer)
 
+        self.transformer_convolutions = nn.ModuleList()
+        for i, num_head in enumerate(num_heads):
+            transformer_layer = TransformerConv(
+                in_channels=preprocess_hidden_features[-1] * (2 if i == 0 else num_heads[i - 1]),
+                out_channels=preprocess_hidden_features[-1],
+                heads=num_head,
+                dropout=dropout_rates[len(preprocess_hidden_features) + i],
+                concat=True
+            )
+            self.transformer_convolutions.add_module(f'transformer_conv_{i}', transformer_layer)
+
         # Postprocessing layers
         self.postprocess = nn.ModuleList()
         for i in range(len(postprocess_hidden_features)):
@@ -159,8 +170,16 @@ class MoleculeModel(pl.LightningModule):
         x = torch.cat([x, aggregated_edge_features], dim=1)
 
         # Apply GATv2 convolutions
+        x_gat = x
         for conv in self.gat_convolutions.children():
-            x = conv(x, edge_index)
+            x_gat = conv(x_gat, edge_index)
+
+        # Apply Transformer convolutions
+        x_transformer = x
+        for conv in self.transformer_convolutions.children():
+            x_transformer = conv(x_transformer, edge_index)
+
+        x_combined = torch.cat([x_gat, x_transformer], dim=1)
 
         # Apply postprocessing
         for layer in self.postprocess:
