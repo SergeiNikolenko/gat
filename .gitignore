@@ -1,6 +1,5 @@
 *slurm*
 checkpoints/
 *log*
-*.out
 logs/
 utils/__pycache__/
