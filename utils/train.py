@@ -143,20 +143,26 @@ class MoleculeModel(pl.LightningModule):
             )
             self.transformer_convolutions.add_module(f'transformer_conv_{i}', transformer_layer)
 
-        # Postprocessing layers
-        self.postprocess = nn.ModuleList()
-        for i in range(len(postprocess_hidden_features)):
+        self.gat_postprocess = nn.ModuleList()
+        self._build_postprocess_layers(self.gat_postprocess, preprocess_hidden_features[-1] * num_heads[-1], postprocess_hidden_features, use_batch_norm, activation_fns, dropout_rates)
+
+        # Постобработка для Transformer
+        self.transformer_postprocess = nn.ModuleList()
+        self._build_postprocess_layers(self.transformer_postprocess, preprocess_hidden_features[-1] * num_heads[-1], postprocess_hidden_features, use_batch_norm, activation_fns, dropout_rates)
+
+        # Выходной слой
+        self.output_layer = nn.Linear(postprocess_hidden_features[-1] * 2, out_features)  # Удваиваем размер, т.к. будем конкатенировать результаты постобработки
+
+    def _build_postprocess_layers(self, container, in_features, hidden_features, use_batch_norm, activation_fns, dropout_rates):
+        for i in range(len(hidden_features)):
             post_layer = nn.Sequential()
-            in_features = preprocess_hidden_features[-1] * num_heads[-1] if i == 0 else postprocess_hidden_features[i-1]
-            post_layer.add_module(f'post_linear_{i}', nn.Linear(in_features, postprocess_hidden_features[i]))
-            if use_batch_norm[len(preprocess_hidden_features) + len(num_heads) + i]:
-                post_layer.add_module(f'post_bn_{i}', nn.BatchNorm1d(postprocess_hidden_features[i]))
-            post_layer.add_module(f'post_activation_{i}', activation_fns[len(preprocess_hidden_features) + len(num_heads) + i]())
-            post_layer.add_module(f'post_dropout_{i}', nn.Dropout(dropout_rates[len(preprocess_hidden_features) + len(num_heads) + i]))
-            self.postprocess.append(post_layer)
-
-        self.output_layer = nn.Linear(postprocess_hidden_features[-1], out_features)
-
+            in_f = in_features if i == 0 else hidden_features[i-1]
+            post_layer.add_module(f'post_linear_{i}', nn.Linear(in_f, hidden_features[i]))
+            if use_batch_norm[i]:
+                post_layer.add_module(f'post_bn_{i}', nn.BatchNorm1d(hidden_features[i]))
+            post_layer.add_module(f'post_activation_{i}', activation_fns[i]())
+            post_layer.add_module(f'post_dropout_{i}', nn.Dropout(dropout_rates[i]))
+            container.append(post_layer)
     def forward(self, x, edge_index, edge_attr):
         for layer in self.atom_preprocess:
             x = layer(x)
@@ -179,14 +185,18 @@ class MoleculeModel(pl.LightningModule):
         for conv in self.transformer_convolutions.children():
             x_transformer = conv(x_transformer, edge_index)
 
+        x_gat = x_gat
+        for layer in self.gat_postprocess:
+            x_gat = layer(x_gat)
+
+        # Постобработка для Transformer
+        x_transformer = x_transformer
+        for layer in self.transformer_postprocess:
+            x_transformer = layer(x_transformer)
+
         x_combined = torch.cat([x_gat, x_transformer], dim=1)
-
-        # Apply postprocessing
-        for layer in self.postprocess:
-            x = layer(x)
-
-        x = self.output_layer(x).squeeze(-1)
-        return x
+        x_combined = self.output_layer(x_combined).squeeze(-1)
+        return x_combined
     
     def configure_optimizers(self):
         optimizer = self.hparams.optimizer_class(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
@@ -255,12 +265,13 @@ class MoleculeModel(pl.LightningModule):
         print(f'Test R²: {r2:.4f}')
         print(f'Test MAE: {mae:.4f}')
 
-        return self.df_results
-    
-    def on_epoch_end(self):
         if self.logger:
             for name, param in self.named_parameters():
                 self.logger.experiment.add_histogram(name, param, self.current_epoch)
+
+        return self.df_results
+    
+
 
     def log_activations_hook(self, layer_name):
         def hook(module, input, output):
