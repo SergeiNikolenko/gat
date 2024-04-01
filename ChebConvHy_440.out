@@ -1,8 +1,0 @@
-[I 2024-03-31 23:58:10,995] A new study created in memory with name: no-name-ac150b91-c97c-41bd-8d68-4dca8f5c8837
-cuda True
-NVIDIA GeForce RTX 2080 SUPER
-Results will be saved in: hyperopt_3
-/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/core/module.py:483: UserWarning: You called `self.log('val_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
-  rank_zero_warn(
-/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/core/module.py:483: UserWarning: You called `self.log('train_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
-  rank_zero_warn(
