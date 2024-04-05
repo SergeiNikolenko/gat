@@ -19,9 +19,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="lightning_fabric
 
 torch.cuda.empty_cache()
 
-from utils.train import MoleculeModel, MoleculeDataModule, GATv2Model, get_metric, save_trial_to_csv, create_hyperopt_dir
+from utils.train import MoleculeModel, MoleculeDataModule, GATv2Model, save_trial_to_csv, create_hyperopt_dir
 from utils.prepare import FeaturizationParameters, MoleculeDataset, MoleculeData
-
 import logging
 
 logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)

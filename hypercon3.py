@@ -287,7 +287,7 @@ def objective(trial):
         postprocess_hidden_features = [128, 128]
         
 
-        K = [trial.suggest_int('K1', 8, 40), trial.suggest_int('K2', 8, 40)]
+        K = [10, 10, trial.suggest_int('K2', 10, 40)]
 
 
         optimizer_class = Lion

@@ -1,0 +1,47 @@
+[I 2024-04-03 19:23:09,660] A new study created in memory with name: no-name-7f9ab2d4-5884-4844-8daa-1ba6a776550b
+cuda True
+NVIDIA GeForce RTX 3090
+Results will be saved in: hyperopt_3
+/home/nikolenko/.local/lib/python3.10/site-packages/pytorch_lightning/core/module.py:507: You called `self.log('val_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
+/home/nikolenko/.local/lib/python3.10/site-packages/pytorch_lightning/core/module.py:507: You called `self.log('train_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
+[I 2024-04-03 19:51:11,904] Trial 0 finished with value: 0.02188342809677124 and parameters: {'K1': 6, 'K2': 10}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-03 20:34:57,658] Trial 1 finished with value: 0.024026840925216675 and parameters: {'K1': 10, 'K2': 2}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-03 21:15:39,799] Trial 2 finished with value: 0.03271397203207016 and parameters: {'K1': 3, 'K2': 2}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-03 21:44:03,514] Trial 3 finished with value: 0.036273665726184845 and parameters: {'K1': 2, 'K2': 2}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-03 23:02:17,440] Trial 4 finished with value: 0.02264384925365448 and parameters: {'K1': 7, 'K2': 5}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-03 23:58:32,979] Trial 5 finished with value: 0.027240343391895294 and parameters: {'K1': 2, 'K2': 5}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-04 01:07:23,975] Trial 6 finished with value: 0.02236846648156643 and parameters: {'K1': 7, 'K2': 6}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-04 02:07:48,241] Trial 7 finished with value: 0.024539314210414886 and parameters: {'K1': 5, 'K2': 5}. Best is trial 0 with value: 0.02188342809677124.
+[I 2024-04-04 02:44:30,850] Trial 8 finished with value: 0.021662931889295578 and parameters: {'K1': 10, 'K2': 9}. Best is trial 8 with value: 0.021662931889295578.
+[I 2024-04-04 04:00:54,166] Trial 9 finished with value: 0.022662730887532234 and parameters: {'K1': 8, 'K2': 4}. Best is trial 8 with value: 0.021662931889295578.
+[I 2024-04-04 04:30:31,935] Trial 10 finished with value: 0.021907152608036995 and parameters: {'K1': 10, 'K2': 9}. Best is trial 8 with value: 0.021662931889295578.
+[I 2024-04-04 05:18:19,512] Trial 11 finished with value: 0.021250693127512932 and parameters: {'K1': 5, 'K2': 10}. Best is trial 11 with value: 0.021250693127512932.
+[I 2024-04-04 06:31:48,719] Trial 12 finished with value: 0.021678222343325615 and parameters: {'K1': 4, 'K2': 8}. Best is trial 11 with value: 0.021250693127512932.
+[I 2024-04-04 07:15:24,252] Trial 13 finished with value: 0.02180570736527443 and parameters: {'K1': 9, 'K2': 8}. Best is trial 11 with value: 0.021250693127512932.
+[I 2024-04-04 08:26:20,829] Trial 14 finished with value: 0.020679550245404243 and parameters: {'K1': 5, 'K2': 10}. Best is trial 14 with value: 0.020679550245404243.
+[I 2024-04-04 09:54:06,503] Trial 15 finished with value: 0.020559946075081825 and parameters: {'K1': 5, 'K2': 10}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 11:00:55,609] Trial 16 finished with value: 0.02236090414226055 and parameters: {'K1': 4, 'K2': 8}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 12:17:22,562] Trial 17 finished with value: 0.022445565089583397 and parameters: {'K1': 6, 'K2': 7}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 13:43:28,785] Trial 18 finished with value: 0.020611261948943138 and parameters: {'K1': 4, 'K2': 10}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 14:12:17,055] Trial 19 finished with value: 0.022698411718010902 and parameters: {'K1': 3, 'K2': 9}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 14:50:47,429] Trial 20 finished with value: 0.023126892745494843 and parameters: {'K1': 4, 'K2': 7}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 16:06:58,706] Trial 21 finished with value: 0.020663660019636154 and parameters: {'K1': 5, 'K2': 10}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 16:56:21,258] Trial 22 finished with value: 0.021379809826612473 and parameters: {'K1': 5, 'K2': 10}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 18:06:45,251] Trial 23 finished with value: 0.021672353148460388 and parameters: {'K1': 3, 'K2': 9}. Best is trial 15 with value: 0.020559946075081825.
+[I 2024-04-04 19:24:51,430] Trial 24 finished with value: 0.020372925326228142 and parameters: {'K1': 7, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-04 19:53:24,315] Trial 25 finished with value: 0.02229340560734272 and parameters: {'K1': 7, 'K2': 9}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-04 20:58:12,016] Trial 26 finished with value: 0.02175808884203434 and parameters: {'K1': 8, 'K2': 7}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-04 23:02:31,564] Trial 27 finished with value: 0.021451307460665703 and parameters: {'K1': 6, 'K2': 8}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 00:26:43,592] Trial 28 finished with value: 0.02101791277527809 and parameters: {'K1': 8, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 01:16:31,573] Trial 29 finished with value: 0.021384116262197495 and parameters: {'K1': 6, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 02:30:40,076] Trial 30 finished with value: 0.021429842337965965 and parameters: {'K1': 4, 'K2': 9}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 03:57:26,860] Trial 31 finished with value: 0.020550593733787537 and parameters: {'K1': 5, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 05:15:11,532] Trial 32 finished with value: 0.02082805708050728 and parameters: {'K1': 6, 'K2': 9}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 05:46:42,130] Trial 33 finished with value: 0.02265961281955242 and parameters: {'K1': 7, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 06:39:58,079] Trial 34 finished with value: 0.021579980850219727 and parameters: {'K1': 4, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 07:27:54,639] Trial 35 finished with value: 0.02952718362212181 and parameters: {'K1': 3, 'K2': 3}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 09:15:41,415] Trial 36 finished with value: 0.021510465070605278 and parameters: {'K1': 5, 'K2': 8}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 10:31:25,535] Trial 37 finished with value: 0.02328154444694519 and parameters: {'K1': 2, 'K2': 9}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 12:00:06,724] Trial 38 finished with value: 0.02042570896446705 and parameters: {'K1': 6, 'K2': 10}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 13:23:54,516] Trial 39 finished with value: 0.02124687470495701 and parameters: {'K1': 7, 'K2': 9}. Best is trial 24 with value: 0.020372925326228142.
+[I 2024-04-05 14:36:11,086] Trial 40 finished with value: 0.023405771702528 and parameters: {'K1': 6, 'K2': 6}. Best is trial 24 with value: 0.020372925326228142.

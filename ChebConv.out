@@ -2,33 +2,28 @@ GPU available: True (cuda), used: True
 TPU available: False, using: 0 TPU cores
 IPU available: False, using: 0 IPUs
 HPU available: False, using: 0 HPUs
-Missing logger folder: tb_logs/MolModel
+You are using a CUDA device ('NVIDIA GeForce RTX 3090') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
 LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
 
   | Name              | Type       | Params
 -------------------------------------------------
-0 | atom_preprocess   | ModuleList | 151 K 
+0 | atom_preprocess   | ModuleList | 177 K 
 1 | cheb_convolutions | ModuleList | 98.6 K
 2 | postprocess       | ModuleList | 33.5 K
 3 | output_layer      | Linear     | 129   
 -------------------------------------------------
-283 K     Trainable params
+309 K     Trainable params
 0         Non-trainable params
-283 K     Total params
-1.135     Total estimated model params size (MB)
-2024-03-31 23:56:41.111894: I external/local_tsl/tsl/cuda/cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-2024-03-31 23:56:41.160908: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:9261] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-2024-03-31 23:56:41.160975: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:607] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
-2024-03-31 23:56:41.162336: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1515] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-2024-03-31 23:56:42.117209: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+309 K     Total params
+1.238     Total estimated model params size (MB)
 SLURM auto-requeueing enabled. Setting signal handlers.
 cuda True
-NVIDIA GeForce RTX 2080 SUPER
+NVIDIA GeForce RTX 3090
 Model:
  MoleculeModel(
   (atom_preprocess): ModuleList(
     (0): Sequential(
-      (atom_linear_0): Linear(in_features=133, out_features=128, bias=True)
+      (atom_linear_0): Linear(in_features=333, out_features=128, bias=True)
       (atom_bn_0): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
       (atom_activation_0): PReLU(num_parameters=1)
       (atom_dropout_0): Dropout(p=0.0, inplace=False)
@@ -83,8 +78,7 @@ Model:
     )
   )
   (cheb_convolutions): ModuleList(
-    (0): ChebConv(128, 128, K=3, normalization=sym)
-    (1): ChebConv(128, 128, K=3, normalization=sym)
+    (0-1): 2 x ChebConv(128, 128, K=3, normalization=sym)
   )
   (postprocess): ModuleList(
     (0): Sequential(
@@ -102,58 +96,30 @@ Model:
   )
   (output_layer): Linear(in_features=128, out_features=1, bias=True)
 )
+Metric val_loss improved. New best score: 0.036
+Metric val_loss improved by 0.002 >= min_delta = 0.0. New best score: 0.034
+Metric val_loss improved by 0.001 >= min_delta = 0.0. New best score: 0.033
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.033
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.033
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.033
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.032
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.032
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.032
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.032
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.031
+Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.030
+Monitored metric val_loss did not improve in the last 5 records. Best score: 0.030. Signaling Trainer to stop.
+Время обучения: 0:15:45
 Traceback (most recent call last):
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 38, in _call_and_handle_interrupt
-    return trainer_fn(*args, **kwargs)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 650, in _fit_impl
-    self._run(model, ckpt_path=self.ckpt_path)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1103, in _run
-    results = self._run_stage()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1182, in _run_stage
-    self._run_train()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1194, in _run_train
-    with isolate_rng():
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/contextlib.py", line 119, in __enter__
-    return next(self.gen)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/utilities/seed.py", line 42, in isolate_rng
-    states = _collect_rng_states()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/lightning_fabric/utilities/seed.py", line 111, in _collect_rng_states
-    "torch.cuda": torch.cuda.get_rng_state_all(),
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/cuda/random.py", line 39, in get_rng_state_all
-    results.append(get_rng_state(i))
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/cuda/random.py", line 31, in get_rng_state
-    return default_generator.get_state()
-RuntimeError: CUDA error: device kernel image is invalid
-CUDA kernel errors might be asynchronously reported at some other API call,so the stacktrace below might be incorrect.
-For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/nikolenko/work/gat/ChebConv.py", line 338, in <module>
-    trainer.fit(model, data_module)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 608, in fit
-    call._call_and_handle_interrupt(
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 63, in _call_and_handle_interrupt
-    trainer._teardown()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1166, in _teardown
-    self.strategy.teardown()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 496, in teardown
-    self.lightning_module.cpu()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/lightning_fabric/utilities/device_dtype_mixin.py", line 78, in cpu
-    return super().cpu()
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 710, in cpu
-    return self._apply(lambda t: t.cpu())
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 570, in _apply
-    module._apply(fn)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 570, in _apply
-    module._apply(fn)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 570, in _apply
-    module._apply(fn)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 593, in _apply
-    param_applied = fn(param)
-  File "/opt/anaconda/envs/torch_geom_2/lib/python3.9/site-packages/torch/nn/modules/module.py", line 710, in <lambda>
-    return self._apply(lambda t: t.cpu())
-RuntimeError: CUDA error: device kernel image is invalid
-CUDA kernel errors might be asynchronously reported at some other API call,so the stacktrace below might be incorrect.
-For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
+  File "/home/nikolenko/work/gat/ChebConv.py", line 348, in <module>
+    evaluate_model(model, data_module)
+  File "/home/nikolenko/work/gat/ChebConv.py", line 60, in evaluate_model
+    y_hat = model(batch.x, batch.edge_index, batch.edge_attr)
+  File "/opt/anaconda3/envs/torch_geom/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+TypeError: MoleculeModel.forward() takes 3 positional arguments but 4 were given
