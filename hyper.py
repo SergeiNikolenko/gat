@@ -283,23 +283,22 @@ def objective(trial):
         out_features = 1
         edge_attr_dim = molecule_dataset[0].edge_attr.shape[1]
 
-        preprocess_hidden_features = [128, 128, 128, 128, 128, 128, 128, 128, 128]
-        postprocess_hidden_features = [128, 128]
-        
+        preprocess_hidden_features = [trial.suggest_int('preprocess_hidden_feature_' + str(i), 64, 256, 8) for i in range(9)]
+        postprocess_hidden_features = [trial.suggest_int('postprocess_hidden_feature_' + str(i), 64, 256, 8) for i in range(2)]
 
-        K = [trial.suggest_int('K1', 2, 10), trial.suggest_int('K2', 2, 10)]
-
+        K = [trial.suggest_int('K1', 2, 40), trial.suggest_int('K2', 2, 40)]
 
         optimizer_class = Lion
-        learning_rate = 2.2e-5
-        weight_decay = 3e-5
-        step_size = 80
-        gamma = 0.2
+        learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-3)
+        weight_decay = trial.suggest_loguniform('weight_decay', 1e-5, 1e-3)
+        step_size = trial.suggest_int('step_size', 10, 100)
+        gamma = trial.suggest_uniform('gamma', 0.1, 0.5)
         max_epochs = 100
         patience = 5
-        batch_size = 128
+        batch_size = trial.suggest_int('batch_size', 32, 256, 2)
 
-        dropout_rates = [0.0] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
+        dropout_rate = trial.suggest_float('dropout_rate', 0.0, 0.6, step=0.1)
+        dropout_rates = [dropout_rate] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
         activation_fns = [nn.PReLU] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
         use_batch_norm = [True] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
 
@@ -322,7 +321,7 @@ def objective(trial):
         )
 
         # Обучение модели
-        data_module = MoleculeDataModule(molecule_dataset, batch_size=128, num_workers=num_workers)
+        data_module = MoleculeDataModule(molecule_dataset, batch_size=batch_size, num_workers=num_workers)
         early_stop_callback = EarlyStopping(monitor="val_loss", patience=patience, mode="min")
 
         trainer = pl.Trainer(

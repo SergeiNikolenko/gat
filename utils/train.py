@@ -132,6 +132,7 @@ class MoleculeModel(pl.LightningModule):
             )
             self.gat_convolutions.add_module(f'gat_conv_{i}', gat_layer)
 
+        # Transformer convolutional layers
         self.transformer_convolutions = nn.ModuleList()
         for i, num_head in enumerate(num_heads):
             transformer_layer = TransformerConv(
