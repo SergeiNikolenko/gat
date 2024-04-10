@@ -1,0 +1,8 @@
+[I 2024-04-10 12:39:09,663] A new study created in memory with name: no-name-d2f06d93-b03d-4100-9e30-eb0db794882c
+cuda True
+NVIDIA GeForce RTX 3090
+Results will be saved in: hyperopt_4
+/home/nikolenko/.local/lib/python3.10/site-packages/pytorch_lightning/core/module.py:507: You called `self.log('val_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
+/home/nikolenko/.local/lib/python3.10/site-packages/pytorch_lightning/core/module.py:507: You called `self.log('train_loss', ..., logger=True)` but have no logger configured. You can enable one by doing `Trainer(logger=ALogger(...))`
+[I 2024-04-10 12:57:49,855] Trial 0 finished with value: 0.026010552421212196 and parameters: {'num_preprocess_layers': 8, 'preprocess_layer_size': 448, 'num_postprocess_layers': 4, 'postprocess_layer_size': 464, 'num_cheb_layers': 3, 'K0': 10, 'K1': 10, 'K2': 20, 'batch_size': 896, 'learning_rate': 1.5239759757559362e-05, 'weight_decay': 4.133208423104426e-05, 'step_size': 80, 'gamma': 0.45000000000000007}. Best is trial 0 with value: 0.026010552421212196.
+/var/lib/slurm/slurmd/job09201/slurm_script: line 15: 1629729 Killed                  python hyper.py

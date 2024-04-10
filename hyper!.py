@@ -187,12 +187,14 @@ class MoleculeModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index)
         loss = self.metric(batch.y, y_hat)
+        self.log('train_loss', loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
         self.train_losses.append(loss.item())
         return loss
     
     def validation_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index)
         val_loss = self.metric(batch.y, y_hat)
+        self.log('val_loss', val_loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
         self.val_losses.append(val_loss.item())
 
     def test_step(self, batch, batch_idx):
@@ -256,7 +258,7 @@ class MoleculeModel(pl.LightningModule):
             raise ValueError(f"Неизвестное имя метрики: {metric_name}")
 
 # %%
-molecule_dataset = torch.load("../data/QM_10k.pt")
+molecule_dataset = torch.load("../data/QM_137k_skip30.pt")
 
 # %%
 num_workers = 8
@@ -275,20 +277,23 @@ def objective(trial):
         out_features = 1
         edge_attr_dim = molecule_dataset[0].edge_attr.shape[1]
 
-        preprocess_hidden_features = [128, 128, 128, 128, 128, 128, 128, 128, 128]
-        postprocess_hidden_features = [128, 128]
+        num_preprocess_layers = trial.suggest_int('num_preprocess_layers', 5, 14)
+        preprocess_layer_size = trial.suggest_int('preprocess_layer_size', 128, 512, step=16)
+        preprocess_hidden_features = [preprocess_layer_size] * num_preprocess_layers
 
+        num_postprocess_layers = trial.suggest_int('num_postprocess_layers', 2, 5)
+        postprocess_layer_size = trial.suggest_int('postprocess_layer_size', 128, 512, step=16)
+        postprocess_hidden_features = [postprocess_layer_size] * num_postprocess_layers
 
-        preprocess_layer_size = trial.suggest_int('preprocess_layer_size', 128, 512, step=128)
         num_cheb_layers = trial.suggest_int('num_cheb_layers', 2, 6)
         cheb_hidden_features = [preprocess_layer_size] * num_cheb_layers
         cheb_normalization = ['sym'] * num_cheb_layers
-
-        K = [trial.suggest_int(f'K{i}', 8, 20, step=2) for i in range(num_cheb_layers)]
+        K = [trial.suggest_int(f'K{i}', 2, 20, step=2) for i in range(num_cheb_layers)]
 
         dropout_rates = [0.0] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
         activation_fns = [nn.PReLU] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
         use_batch_norm = [True] * (len(preprocess_hidden_features) + len(postprocess_hidden_features))
+
 
         batch_size = 1024
         learning_rate = 2.2e-5
@@ -296,7 +301,6 @@ def objective(trial):
 
         step_size = 80
         gamma = 0.2
-
 
         model = MoleculeModel(
             atom_in_features=in_features,
@@ -351,7 +355,7 @@ print(f"Results will be saved in: {hyperopt_dir}")
 
 study = optuna.create_study(direction='minimize', pruner=optuna.pruners.SuccessiveHalvingPruner())
 
-study.optimize(objective, n_trials=1000)
+study.optimize(objective, n_trials=100)
 
 print(f'Best trial: {study.best_trial.number}')
 print(f'Best value (RMSE): {study.best_trial.value}')
