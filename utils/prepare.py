@@ -84,16 +84,6 @@ def bond_features(bond: Chem.rdchem.Bond, skipatom_model=None) -> List[Union[boo
         ]
         fbond += onek_encoding_unk(int(bond.GetStereo()), list(range(6)))
 
-    # Признаки SkipAtom
-    if skipatom_model is not None:
-        start_atom_symbol = bond.GetBeginAtom().GetSymbol()
-        end_atom_symbol = bond.GetEndAtom().GetSymbol()
-
-        start_atom_vector = get_skipatom_vector(start_atom_symbol, skipatom_model)
-        end_atom_vector = get_skipatom_vector(end_atom_symbol, skipatom_model)
-
-        fbond += start_atom_vector + end_atom_vector
-    
     return fbond
 
 
@@ -156,4 +146,3 @@ def convert_string_to_list(string):
         return ast.literal_eval(string)
     except ValueError:
         return []
-

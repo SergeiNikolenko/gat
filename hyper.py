@@ -187,12 +187,14 @@ class MoleculeModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index)
         loss = self.metric(batch.y, y_hat)
+        self.log('train_loss', loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
         self.train_losses.append(loss.item())
         return loss
     
     def validation_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index)
         val_loss = self.metric(batch.y, y_hat)
+        self.log('val_loss', val_loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
         self.val_losses.append(val_loss.item())
 
     def test_step(self, batch, batch_idx):
@@ -229,10 +231,6 @@ class MoleculeModel(pl.LightningModule):
         r2 = r2_score(all_true_values, all_predictions)
         mae = mean_absolute_error(all_true_values, all_predictions)
 
-        self.log('test_rmse', rmse)
-        self.log('test_mse', mse)
-        self.log('test_r2', r2)
-        self.log('test_mae', mae)
 
         print(f'Test RMSE: {rmse:.4f}')
         print(f'Test MSE: {mse:.4f}')
@@ -240,7 +238,7 @@ class MoleculeModel(pl.LightningModule):
         print(f'Test MAE: {mae:.4f}')
 
         return self.df_results
-
+    
     def get_metric(self, metric_name):
         if metric_name == 'mse':
             def mse(y_true, y_pred):
@@ -256,7 +254,7 @@ class MoleculeModel(pl.LightningModule):
             raise ValueError(f"Неизвестное имя метрики: {metric_name}")
 
 # %%
-molecule_dataset = torch.load("../data/QM_10k.pt")
+molecule_dataset = torch.load("../data/QM_100.pt")
 
 # %%
 num_workers = 8
@@ -279,7 +277,7 @@ def objective(trial):
         postprocess_hidden_features = [128, 128]
 
 
-        preprocess_layer_size = trial.suggest_int('preprocess_layer_size', 128, 512, step=128)
+        preprocess_layer_size = trial.suggest_int('preprocess_layer_size', 128, 2048, step=128)
         num_cheb_layers = trial.suggest_int('num_cheb_layers', 2, 6)
         cheb_hidden_features = [preprocess_layer_size] * num_cheb_layers
         cheb_normalization = ['sym'] * num_cheb_layers
