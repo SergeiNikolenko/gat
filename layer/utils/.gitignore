@@ -1,5 +1,0 @@
-*slurm*
-checkpoints/
-*log*
-logs/
-utils/__pycache__/
