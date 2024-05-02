@@ -1,0 +1,102 @@
+[I 2024-05-02 18:03:18,161] A new study created in memory with name: no-name-2d6409ec-9f11-4f0d-83d3-b7e1c6bd187e
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Missing logger folder: tb_logs/hyperopt/skipatom
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+cuda True
+NVIDIA GeForce RTX 3090
+Results will be saved in: hyperopt_1
+[I 2024-05-02 18:15:56,065] Trial 0 finished with value: 0.02794552594423294 and parameters: {'top_n': 7, 'min_count': 3669471.3866784563}. Best is trial 0 with value: 0.02794552594423294.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 18:33:45,861] Trial 1 finished with value: 0.02703755721449852 and parameters: {'top_n': 7, 'min_count': 781613956.6764946}. Best is trial 1 with value: 0.02703755721449852.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 18:47:07,419] Trial 2 finished with value: 0.029167814180254936 and parameters: {'top_n': 4, 'min_count': 1260229120.8178017}. Best is trial 1 with value: 0.02703755721449852.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 19:01:31,305] Trial 3 finished with value: 0.027001600712537766 and parameters: {'top_n': 4, 'min_count': 41994590.136819586}. Best is trial 3 with value: 0.027001600712537766.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 19:18:06,479] Trial 4 finished with value: 0.02776923030614853 and parameters: {'top_n': 4, 'min_count': 42223140.73354554}. Best is trial 3 with value: 0.027001600712537766.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 19:34:28,650] Trial 5 finished with value: 0.02865997515618801 and parameters: {'top_n': 4, 'min_count': 30606195.98664108}. Best is trial 3 with value: 0.027001600712537766.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 19:50:42,334] Trial 6 finished with value: 0.02739938534796238 and parameters: {'top_n': 3, 'min_count': 8419503941.028833}. Best is trial 3 with value: 0.027001600712537766.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 20:03:58,292] Trial 7 finished with value: 0.027432549744844437 and parameters: {'top_n': 7, 'min_count': 3429703.3611626704}. Best is trial 3 with value: 0.027001600712537766.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 20:21:28,041] Trial 8 finished with value: 0.02678646333515644 and parameters: {'top_n': 6, 'min_count': 252540930.6455739}. Best is trial 8 with value: 0.02678646333515644.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 20:36:18,281] Trial 9 finished with value: 0.028322648257017136 and parameters: {'top_n': 7, 'min_count': 6977501.616299742}. Best is trial 8 with value: 0.02678646333515644.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 20:49:09,935] Trial 10 finished with value: 0.02788202092051506 and parameters: {'top_n': 6, 'min_count': 322625.85352040635}. Best is trial 8 with value: 0.02678646333515644.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 21:08:41,817] Trial 11 finished with value: 0.027396975085139275 and parameters: {'top_n': 5, 'min_count': 195851627.54586646}. Best is trial 8 with value: 0.02678646333515644.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+[I 2024-05-02 21:20:58,490] Trial 12 finished with value: 0.028252534568309784 and parameters: {'top_n': 5, 'min_count': 252855923.62346444}. Best is trial 8 with value: 0.02678646333515644.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.

@@ -2,4 +2,4 @@
 checkpoints/
 *log*
 logs/
-utils/__pycache__/
+*__pycache__/
