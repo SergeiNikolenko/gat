@@ -1,86 +1,25 @@
-import os
-import csv
-
-
 import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-from torch_geometric.nn import GATv2Conv, TransformerConv, ChebConv
 from torch_scatter import scatter_mean
-from torch.utils.data import Subset
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from torch_geometric.loader import DataLoader
 
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 
 class MoleculeModel(pl.LightningModule):
-    def __init__(self, atom_in_features, edge_attr_dim, preprocess_hidden_features, cheb_hidden_features, K, cheb_normalizations, dropout_rates, activation_fns, use_batch_norm, postprocess_hidden_features, out_features, optimizer_class, learning_rate, weight_decay, step_size, gamma, batch_size, metric='rmse'):
-        super().__init__()
-        self.save_hyperparameters()
+    def __init__(self, model_backbone, optimizer_class, learning_rate, weight_decay, step_size, gamma, batch_size, metric='rmse'):
+        super(MoleculeModel, self).__init__()
+        self.model_backbone = model_backbone
         self.batch_size = batch_size
         self.metric = self.get_metric(metric)
         
-        self.train_losses = []
-        self.val_losses = []
-
-        # Preprocessing layers for atom features
-        self.atom_preprocess = nn.ModuleList()
-        self.atom_preprocess.append(AtomEdgeInteraction(atom_in_features, edge_attr_dim, preprocess_hidden_features[0]))
-        for i in range(1, len(preprocess_hidden_features)):
-            preprocess_layer = nn.Sequential()
-            in_features = preprocess_hidden_features[i-1]
-            preprocess_layer.add_module(f'atom_linear_{i}', nn.Linear(in_features, preprocess_hidden_features[i]))
-            if use_batch_norm[i]:
-                preprocess_layer.add_module(f'atom_bn_{i}', nn.BatchNorm1d(preprocess_hidden_features[i]))
-            preprocess_layer.add_module(f'atom_activation_{i}', activation_fns[i]())
-            preprocess_layer.add_module(f'atom_dropout_{i}', nn.Dropout(dropout_rates[i]))
-            self.atom_preprocess.append(preprocess_layer)
-
-        # Chebyshev convolution layers
-        self.cheb_convolutions = nn.ModuleList()
-        in_channels = preprocess_hidden_features[-1]
-        for i in range(len(cheb_hidden_features)):
-            out_channels = cheb_hidden_features[i]
-            normalization = cheb_normalizations[i] if i < len(cheb_normalizations) else 'none'  # Default to 'none' if not specified
-            self.cheb_convolutions.append(ChebConv(in_channels=in_channels, out_channels=out_channels, K=K[i], normalization=normalization))
-            in_channels = out_channels
-
-
-        # Postprocessing layers
-        self.postprocess = nn.ModuleList()
-        in_features = cheb_hidden_features[-1]
-        for i in range(len(postprocess_hidden_features)):
-            post_layer = nn.Sequential()
-            post_layer.add_module(f'post_linear_{i}', nn.Linear(in_features, postprocess_hidden_features[i]))
-            if use_batch_norm[len(preprocess_hidden_features) + i]:
-                post_layer.add_module(f'post_bn_{i}', nn.BatchNorm1d(postprocess_hidden_features[i]))
-            post_layer.add_module(f'post_activation_{i}', activation_fns[len(preprocess_hidden_features) + i]())
-            post_layer.add_module(f'post_dropout_{i}', nn.Dropout(dropout_rates[len(preprocess_hidden_features) + i]))
-            self.postprocess.append(post_layer)
-            in_features = postprocess_hidden_features[i]  # Update in_features for the next layer
-
-        self.output_layer = nn.Linear(postprocess_hidden_features[-1], out_features)
-
+        self.save_hyperparameters(ignore=['model_backbone'])
 
     def forward(self, x, edge_index, edge_attr):
-
-        x = self.atom_preprocess[0](x, edge_index, edge_attr)
-
-        for layer in self.atom_preprocess[1:]:
-            x = layer(x)
-
-        for conv in self.cheb_convolutions:
-            x = F.relu(conv(x, edge_index))
-
-        for layer in self.postprocess:
-            x = layer(x)
-
-        x = self.output_layer(x).squeeze(-1)
-        return x
+        return self.model_backbone(x, edge_index, edge_attr)
     
     def configure_optimizers(self):
         optimizer = self.hparams.optimizer_class(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
@@ -96,14 +35,12 @@ class MoleculeModel(pl.LightningModule):
         y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
         loss = self.metric(batch.y, y_hat)
         self.log('train_loss', loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
-        self.train_losses.append(loss.item())
         return loss
     
     def validation_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
         val_loss = self.metric(batch.y, y_hat)
         self.log('val_loss', val_loss, batch_size=self.batch_size, on_step=True, on_epoch=True, prog_bar=True, logger=True, enable_graph=True)
-        self.val_losses.append(val_loss.item())
 
     def test_step(self, batch, batch_idx):
         y_hat = self(batch.x, batch.edge_index, batch.edge_attr)
@@ -157,7 +94,7 @@ class MoleculeModel(pl.LightningModule):
             
     def log_activations_hook(self, layer_name):
         def hook(module, input, output):
-            if self.logger:  # Check if logger is initialized
+            if self.logger: 
                 self.logger.experiment.add_histogram(f"{layer_name}_activations", output, self.current_epoch)
         return hook
 

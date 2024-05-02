@@ -2,6 +2,7 @@ GPU available: True (cuda), used: True
 TPU available: False, using: 0 TPU cores
 IPU available: False, using: 0 IPUs
 HPU available: False, using: 0 HPUs
+Missing logger folder: tb_logs/ChebConvPrely
 LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
 
   | Name              | Type       | Params
@@ -75,7 +76,9 @@ Model:
   )
   (cheb_convolutions): ModuleList(
     (0): ChebConv(1700, 128, K=10, normalization=sym)
-    (1): ChebConv(128, 128, K=16, normalization=sym)
+    (1): PReLU(num_parameters=1)
+    (2): ChebConv(128, 128, K=16, normalization=sym)
+    (3): PReLU(num_parameters=1)
   )
   (postprocess): ModuleList(
     (0): Sequential(
@@ -93,13 +96,3 @@ Model:
   )
   (output_layer): Linear(in_features=128, out_features=1, bias=True)
 )
-Metric val_loss improved. New best score: 0.092
-Metric val_loss improved by 0.010 >= min_delta = 0.0. New best score: 0.082
-Metric val_loss improved by 0.015 >= min_delta = 0.0. New best score: 0.067
-Metric val_loss improved by 0.012 >= min_delta = 0.0. New best score: 0.054
-Metric val_loss improved by 0.004 >= min_delta = 0.0. New best score: 0.050
-Metric val_loss improved by 0.013 >= min_delta = 0.0. New best score: 0.037
-Metric val_loss improved by 0.005 >= min_delta = 0.0. New best score: 0.032
-Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.032
-Metric val_loss improved by 0.001 >= min_delta = 0.0. New best score: 0.030
-Metric val_loss improved by 0.000 >= min_delta = 0.0. New best score: 0.030
